@@ -36,10 +36,43 @@ sub run
 
     my $db_adapter = $self->_buildDbAdapter($self->{config}->{db});
 
-    my $parser = $self->_buildParser(db => $db_adapter);
-    my $results = $parser->parse_file(log_path => $log_file_path);
+    my $parser = $self->_buildParser();
 
-    $self->_printStatistic($results);
+    my $stats = {
+        total    => 0,
+        messages => 0,
+        logs     => 0,
+        other    => 0,
+    };
+
+    open my $log_file, '<', $log_file_path;
+    while (my $line = <$log_file> )
+    {
+        $stats->{total}++;
+
+        my $result = $parser->parse_line($line);
+
+        if ($result->{flag} eq '<=') {
+            $db_adapter->save_message_record($result);
+
+            $stats->{messages}++;
+
+            next;
+        }
+        if ($result->{int_id}) {
+            $db_adapter->save_log_record($result);
+
+            $stats->{logs}++;
+
+            next;
+        }
+
+        $stats->{other}++;
+    }
+
+    close $log_file;
+
+    $self->_printStatistic($stats);
 }
 
 sub _checkLogFile
@@ -75,7 +108,12 @@ sub _printStatistic
     my $self = shift;
     my ($results) = @_;
 
-    say sprintf('Total lines: %s', $results->{total});
+    say sprintf("Total: %s, messages: %s, log: %s, other: %s",
+        $results->{total},
+        $results->{messages},
+        $results->{logs},
+        $results->{other},
+    );
 }
 
 1;

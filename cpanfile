@@ -4,6 +4,7 @@ requires 'Config::Tiny';
 requires 'DBI';
 requires 'DBD::mysql';
 requires 'Carp';
+requires 'Email::Address';
 
 on 'test' => sub {
     requires 'Test::More';

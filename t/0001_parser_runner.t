@@ -12,13 +12,16 @@ use lib 'lib';
 
 use TestApp::ParserRunner;
 
+
 new_ok( 'TestApp::ParserRunner' => [config => _getTestConfig()] );
 
 subtest 'build builders with corrects args' => sub {
-    my (undef, $tmp_log) = _makeTmpFile();
+    my ($tmp_fh, $tmp_log) = _makeTmpFile();
+    print $tmp_fh 'test string';
+    close $tmp_fh;
 
     my $db_adapter_mock = _buildDbAdapterMock();
-    my $parser_mock = _buildParserMock();
+    my $parser_mock     = _buildParserMock();
 
     my $runner  = _buildRunnerMock(parser => $parser_mock, db_adapter => $db_adapter_mock);
 
@@ -27,15 +30,13 @@ subtest 'build builders with corrects args' => sub {
     my ($db_adapter_args) = $runner->mocked_call_args('_buildDbAdapter');
     is_deeply(_getTestConfig()->{db}, $db_adapter_args, 'DB Adapter agrs');
 
-    my (%parser_args) = $runner->mocked_call_args('_buildParser');
-    is($db_adapter_mock, $parser_args{db}, 'Build parser with db adapter');
-
-    my (%parser_run_args) = $parser_mock->mocked_call_args('parse_file');
-    ok($tmp_log eq $parser_run_args{log_path}, 'Run parser with log_path');
+    is(1, $runner->mocked_called('_buildParser'), 'Build parser');
 };
 
 subtest 'run parser with corrects args' => sub {
-    my (undef, $tmp_log) = _makeTmpFile();
+    my ($tmp_fh, $tmp_log) = _makeTmpFile();
+    print $tmp_fh 'test string';
+    close $tmp_fh;
 
     my $db_adapter_mock = _buildDbAdapterMock();
     my $parser_mock = _buildParserMock();
@@ -44,8 +45,8 @@ subtest 'run parser with corrects args' => sub {
 
     $runner->run(log_file => $tmp_log);
 
-    my (%parser_run_args) = $parser_mock->mocked_call_args('parse_file');
-    ok($tmp_log eq $parser_run_args{log_path}, 'Run parser with log_path');
+    my @parser_run_args = $parser_mock->mocked_call_args('parse_line');
+    ok('test string' eq $parser_run_args[0], 'Run parser with string');
 };
 
 subtest 'throw correct errors' => sub {
@@ -59,19 +60,23 @@ subtest 'throw correct errors' => sub {
 };
 
 subtest 'print correct statistic' => sub {
-    my $parser_mock = _buildParserMock(stat => {total => 123});
+    my ($tmp_fh, $tmp_log) = _makeTmpFile();
+    print $tmp_fh "test string\n" for (0..2);
+    close $tmp_fh;
 
-    my $runner = _buildRunnerMock(parser => $parser_mock);
+    my $parser = Test::MonkeyMock->new();
+    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7W', flag => '<='}},  frame => 0);
+    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7W', flag => '==',}}, frame => 1);
+    $parser->mock(parse_line => sub {{int_id => '', flag => ''}},                    frame => 2);
 
-    my (undef, $tmp_log) = _makeTmpFile();
+    my $runner = _buildRunnerMock(parser => $parser);
 
-    stdout_is(sub {$runner->run(log_file => $tmp_log)},"Total lines: 123\n",'Test statistic ');
-
+    stdout_is(sub {$runner->run(log_file => $tmp_log)},"Total: 3, messages: 1, log: 1, other: 1\n",'Test statistic ');
 };
 
 done_testing();
 
-sub _buildRunner
+sub _buildParser
 {
     return TestApp::ParserRunner->new(config => _getTestConfig());
 }
@@ -80,7 +85,7 @@ sub _buildRunnerMock
 {
     my (%params) = @_;
 
-    my $runner = _buildRunner();
+    my $runner = _buildParser();
 
     my $db_adapter_mock = $params{db_adapter} || _buildDbAdapterMock();
     my $parser_mock     = $params{parser}     || _buildParserMock();
@@ -115,10 +120,18 @@ sub _buildParserMock
 {
     my (%params) = @_;
 
-    my $stat = $params{stat} || { total => 0 };
+    my $stat = $params{result} || {
+        date       => '2012-02-13',
+        time       => '14:39:22',
+        int_id     => '1RwtJa-0009RI-7W',
+        flag       => '<=',
+        address    => 'tpxmuwr@somehost.ru',
+        other_info => '1RwtJa-0009RI-7W <= tpxmuwr@somehost.ru H=mail.somehost.com [84.154.134.45] P=esmtp S=2229 id=120213143628.DOMAIN_FEEDBACK_MAIL.503141@whois.somehost.ru',
+        id         => '120213143628.DOMAIN_FEEDBACK_MAIL.503141@whois.somehost.ru',
+    };
 
     my $mock = Test::MonkeyMock->new();
-    $mock->mock(parse_file => sub { $stat });
+    $mock->mock(parse_line => sub { $stat });
 
     return $mock;
 }
@@ -126,7 +139,8 @@ sub _buildParserMock
 sub _buildDbAdapterMock
 {
     my $mock = Test::MonkeyMock->new();
-    $mock->mock(save_lines => sub { 1 });
+    $mock->mock(save_message_record => sub { 1 });
+    $mock->mock(save_log_record => sub { 1 });
 
     return $mock;
 }
