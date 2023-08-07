@@ -15,7 +15,7 @@ subtest 'parse arrival line' => sub {
     my $arrival_line = q{2012-02-13 14:39:22 1RwtJa-0009RI-7W <= tpxmuwr@somehost.ru H=mail.somehost.com [84.154.134.45] P=esmtp S=2229 id=120213143628.DOMAIN_FEEDBACK_MAIL.503141@whois.somehost.ru};
 
     my $expected_result = {
-        date       => '2012-02-13',==
+        date       => '2012-02-13',
         time       => '14:39:22',
         int_id     => '1RwtJa-0009RI-7W',
         flag       => '<=',

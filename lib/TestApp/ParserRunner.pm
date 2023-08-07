@@ -52,15 +52,17 @@ sub run
 
         my $result = $parser->parse_line($line);
 
+        my $record = $self->_buildRecordData($result);
+
         if ($result->{flag} eq '<=') {
-            $db_adapter->save_message_record($result);
+            $db_adapter->save_message_record($record);
 
             $stats->{messages}++;
 
             next;
         }
         if ($result->{int_id}) {
-            $db_adapter->save_log_record($result);
+            $db_adapter->save_log_record($record);
 
             $stats->{logs}++;
 
@@ -87,6 +89,25 @@ sub _checkLogFile
     return 1;
 }
 
+sub _buildRecordData
+{
+    my $self = shift;
+    my ($data) = @_;
+
+    my $created = sprintf('%s %s', $data->{date}, $data->{time});
+    delete $data->{date};
+    delete $data->{time};
+
+    my $str = delete $data->{other_info}|| '';
+
+    my $record = {
+        created => $created,
+        %$data,
+        $str ? (str => $str) : (),
+    };
+
+    return $record;
+}
 sub _buildParser
 {
     my $self = shift;

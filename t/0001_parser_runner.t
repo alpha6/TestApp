@@ -49,6 +49,76 @@ subtest 'run parser with corrects args' => sub {
     ok('test string' eq $parser_run_args[0], 'Run parser with string');
 };
 
+subtest 'call save_message_record with corrects args' => sub {
+    my ($tmp_fh, $tmp_log) = _makeTmpFile();
+    print $tmp_fh 'test string';
+    close $tmp_fh;
+
+    my $db_adapter_mock = _buildDbAdapterMock();
+    my $parser_mock = _buildParserMock(
+        result => {
+            date       => '2012-02-13',
+            time       => '14:39:22',
+            int_id     => '1RwtJa-0009RI-7W',
+            flag       => '<=',
+            address    => 'tpxmuwr@somehost.ru',
+            other_info => 'some string from log',
+            id         => '120213143628.DOMAIN_FEEDBACK_MAIL.503141@whois.somehost.ru',
+        }
+    );
+
+    my $runner  = _buildRunnerMock(parser => $parser_mock, db_adapter => $db_adapter_mock);
+
+    $runner->run(log_file => $tmp_log);
+
+    my $expected_record = {
+        created    => '2012-02-13 14:39:22',
+        int_id     => '1RwtJa-0009RI-7W',
+        flag       => '<=',
+        address    => 'tpxmuwr@somehost.ru',
+        str        => 'some string from log',
+        id         => '120213143628.DOMAIN_FEEDBACK_MAIL.503141@whois.somehost.ru',
+    };
+
+    my ($record) = $db_adapter_mock->mocked_call_args('save_message_record');
+    is_deeply($expected_record, $record, 'save message with params');
+};
+
+subtest 'call save_log_record with corrects args' => sub {
+    my ($tmp_fh, $tmp_log) = _makeTmpFile();
+    print $tmp_fh 'test string';
+    close $tmp_fh;
+
+    my $db_adapter_mock = _buildDbAdapterMock();
+    my $parser_mock = _buildParserMock(
+        result => {
+            date       => '2012-02-13',
+            time       => '14:39:22',
+            int_id     => '1RwtJa-0009RI-7W',
+            flag       => '==',
+            address    => 'tpxmuwr@somehost.ru',
+            other_info => 'some string from log',
+            id         => '120213143628.DOMAIN_FEEDBACK_MAIL.503141@whois.somehost.ru',
+        }
+    );
+
+    my $runner  = _buildRunnerMock(parser => $parser_mock, db_adapter => $db_adapter_mock);
+
+    $runner->run(log_file => $tmp_log);
+
+    my $expected_record = {
+        created    => '2012-02-13 14:39:22',
+        int_id     => '1RwtJa-0009RI-7W',
+        flag       => '==',
+        address    => 'tpxmuwr@somehost.ru',
+        str        => 'some string from log',
+        id         => '120213143628.DOMAIN_FEEDBACK_MAIL.503141@whois.somehost.ru',
+    };
+
+    my ($record) = $db_adapter_mock->mocked_call_args('save_log_record');
+    is_deeply($expected_record, $record, 'save log with params');
+};
+
 subtest 'throw correct errors' => sub {
     my $runner = _buildRunnerMock();
 
@@ -65,9 +135,9 @@ subtest 'print correct statistic' => sub {
     close $tmp_fh;
 
     my $parser = Test::MonkeyMock->new();
-    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7W', flag => '<='}},  frame => 0);
-    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7W', flag => '==',}}, frame => 1);
-    $parser->mock(parse_line => sub {{int_id => '', flag => ''}},                    frame => 2);
+    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7W', flag => '<=', date => '2023-01-02', time => '03:04:05'}},  frame => 0);
+    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7W', flag => '==', date => '2023-01-02', time => '03:04:05'}}, frame => 1);
+    $parser->mock(parse_line => sub {{int_id => '', flag => '', date => '2023-01-02', time => '03:04:05'}},                    frame => 2);
 
     my $runner = _buildRunnerMock(parser => $parser);
 
@@ -120,7 +190,7 @@ sub _buildParserMock
 {
     my (%params) = @_;
 
-    my $stat = $params{result} || {
+    my $result = $params{result} || {
         date       => '2012-02-13',
         time       => '14:39:22',
         int_id     => '1RwtJa-0009RI-7W',
@@ -131,7 +201,7 @@ sub _buildParserMock
     };
 
     my $mock = Test::MonkeyMock->new();
-    $mock->mock(parse_line => sub { $stat });
+    $mock->mock(parse_line => sub { $result });
 
     return $mock;
 }
