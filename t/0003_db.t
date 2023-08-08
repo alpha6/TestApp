@@ -33,7 +33,7 @@ subtest 'call _buildDbh with params' => sub {
     my $expected_params = {
         database => 'database',
         host     => 'host',
-        port     => 3307,
+        port     => 3306,
         user     => 'login',
         password => 'password',
     };
@@ -120,12 +120,12 @@ subtest 'call dbh with params on save log' => sub {
 
     my (@args) = $dbh_mock->mocked_call_args('do');
 
-    my @expected_values = ('2023-01-01 02:03:04', 'record_id', 'record_int_id', 'log record str');
+    my @expected_values = ('2023-01-01 02:03:04', 'record_int_id', 'log record str', 'user@e.mail');
 
     my $query = shift(@args);
     shift @args;
 
-    ok(q{INSERT INTO `messages` (`created`, `id`, `int_id`, `str`) values (?,?,?,?)} eq $query, 'Check correct query');
+    ok(q{INSERT INTO `log` (`created`, `int_id`, `str`, `address`) values (?,?,?,?)} eq $query, 'Check correct query');
 
     is_deeply(\@expected_values, \@args, 'Check correct values');
 };
@@ -157,7 +157,7 @@ sub _getTestConfig
     return (
         database => 'database',
         host     => 'host',
-        port     => 3307,
+        port     => 3306,
         user     => 'login',
         password => 'password',
     );
