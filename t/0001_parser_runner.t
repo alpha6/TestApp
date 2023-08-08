@@ -1,14 +1,15 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
+
+use lib 'lib';
+
 use Test::More;
 use Test::Exception;
 use Test::Output;
 use Test::MonkeyMock;
 
 use File::Temp qw/tempfile/;
-
-use lib 'lib';
 
 use TestApp::ParserRunner;
 
@@ -135,13 +136,28 @@ subtest 'print correct statistic' => sub {
     close $tmp_fh;
 
     my $parser = Test::MonkeyMock->new();
-    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7W', flag => '<=', date => '2023-01-02', time => '03:04:05'}},  frame => 0);
-    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7W', flag => '==', date => '2023-01-02', time => '03:04:05'}}, frame => 1);
-    $parser->mock(parse_line => sub {{int_id => '', flag => '', date => '2023-01-02', time => '03:04:05'}},                    frame => 2);
+    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7W', flag => '<=', date => '2023-01-02', time => '03:04:05'}}, frame => 0);
+    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7E', flag => '==', date => '2023-01-02', time => '03:04:05'}}, frame => 1);
+    $parser->mock(parse_line => sub {{int_id => '1RwtJa-0009RI-7R', flag => '<=', date => '2023-01-02', time => '03:04:06'}}, frame => 2);
 
     my $runner = _buildRunnerMock(parser => $parser);
 
-    stdout_is(sub {$runner->run(log_file => $tmp_log)},"Total: 3, messages: 1, log: 1, other: 1\n",'Test statistic ');
+    stderr_like(sub {$runner->run(log_file => $tmp_log)}, qr/.* \[info\] Total: 3, messages: 2, log: 1, other: 0/,'Test statistic');
+};
+
+subtest 'print correct statistic on lines without int_id' => sub {
+    my ($tmp_fh, $tmp_log) = _makeTmpFile();
+    print $tmp_fh "test string\n";
+    close $tmp_fh;
+
+    my $parser = Test::MonkeyMock->new();
+    $parser->mock(parse_line => sub {{int_id => '', flag => '', date => '2023-01-02', time => '03:04:05'}});
+
+    my $runner = _buildRunnerMock(parser => $parser);
+
+    combined_like(sub {$runner->run(log_file => $tmp_log)}, qr/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{3} \[warn\] Something wrong with string: test string/, 'Print warning on other message');
+
+    combined_like(sub {$runner->run(log_file => $tmp_log)}, qr/Total: 1, messages: 0, log: 0, other: 1/, 'Print stats with other');
 };
 
 done_testing();

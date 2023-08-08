@@ -5,6 +5,7 @@ requires 'DBI';
 requires 'DBD::mysql';
 requires 'Carp';
 requires 'Email::Address';
+requires 'Log::Mini';
 
 on 'test' => sub {
     requires 'Test::More';

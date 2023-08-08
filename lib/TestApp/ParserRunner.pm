@@ -4,7 +4,7 @@ use warnings;
 use feature qw/say/;
 
 require Carp;
-use Error qw/:try/;
+use Log::Mini;
 
 use TestApp::Parser;
 use TestApp::Db;
@@ -19,6 +19,8 @@ sub new
     TestApp::Utils->checkRequiredParams(\%params, qw/config/);
 
     my $self = bless \%params, $class;
+
+    $self->{logger} = Log::Mini->new('stderr', level => 'debug');
 
     return $self;
 }
@@ -68,6 +70,8 @@ sub run
 
             next;
         }
+
+        $self->{logger}->warn('Something wrong with string: %s', $line);
 
         $stats->{other}++;
     }
@@ -129,7 +133,7 @@ sub _printStatistic
     my $self = shift;
     my ($results) = @_;
 
-    say sprintf("Total: %s, messages: %s, log: %s, other: %s",
+    $self->{logger}->info("Total: %s, messages: %s, log: %s, other: %s",
         $results->{total},
         $results->{messages},
         $results->{logs},
