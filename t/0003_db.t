@@ -82,7 +82,7 @@ subtest 'call dbh with params on save message' => sub {
     my $query = shift(@args);
     shift @args;
 
-    ok(q{INSERT INTO `messages` (`created`, `id`, `int_id`, `str`) values (?,?,?,?)} eq $query, 'Check correct query');
+    ok(q{INSERT INTO `message` (`created`, `id`, `int_id`, `str`) values (?,?,?,?)} eq $query, 'Check correct query');
 
     is_deeply(\@expected_values, \@args, 'Check correct values');
 };

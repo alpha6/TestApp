@@ -47,7 +47,7 @@ sub save_message_record
 
     TestApp::Utils->checkRequiredParams($record, qw/created id int_id str/);
 
-    $self->{dbh}->do('INSERT INTO `messages` (`created`, `id`, `int_id`, `str`) values (?,?,?,?)', undef, ($record->{created}, $record->{id}, $record->{int_id}, $record->{str}) );
+    $self->{dbh}->do('INSERT INTO `message` (`created`, `id`, `int_id`, `str`) values (?,?,?,?)', undef, ($record->{created}, $record->{id}, $record->{int_id}, $record->{str}) );
 
     return 1;
 }

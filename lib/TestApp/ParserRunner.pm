@@ -50,20 +50,21 @@ sub run
     open my $log_file, '<', $log_file_path;
     while (my $line = <$log_file> )
     {
+        chomp($line);
         $stats->{total}++;
 
         my $result = $parser->parse_line($line);
 
         my $record = $self->_buildRecordData($result);
 
-        if ($result->{flag} eq '<=') {
+        if ($record->{flag} eq '<=' && $record->{id}) {
             $db_adapter->save_message_record($record);
 
             $stats->{messages}++;
 
             next;
         }
-        if ($result->{int_id}) {
+        if ($record->{int_id}) {
             $db_adapter->save_log_record($record);
 
             $stats->{logs}++;
@@ -71,7 +72,7 @@ sub run
             next;
         }
 
-        $self->{logger}->warn('Something wrong with string: %s', $line);
+        $self->{logger}->warn('No flag and int_id in string: %s', $line);
 
         $stats->{other}++;
     }
@@ -125,7 +126,11 @@ sub _buildDbAdapter
     my $self = shift;
     my ($config) = @_;
 
-    return TestApp::Db->new($config);
+    my $model = TestApp::Db->new();
+
+    $model->connect(%$config);
+
+    return $model;
 }
 
 sub _printStatistic
