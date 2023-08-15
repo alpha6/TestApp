@@ -47,7 +47,7 @@ sub run
         other    => 0,
     };
 
-    open my $log_file, '<', $log_file_path;
+    open my $log_file, '<', $log_file_path or die "Can't open log: $!\n";
     while (my $line = <$log_file> )
     {
         chomp($line);

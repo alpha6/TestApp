@@ -130,12 +130,43 @@ subtest 'call dbh with params on save log' => sub {
     is_deeply(\@expected_values, \@args, 'Check correct values');
 };
 
+subtest 'call dbh with params on find_address' => sub {
+    my $dbh_mock = _buildDbhMock();
+
+    my $model = _buildModel(dbh_mock => $dbh_mock);
+
+    $model->connect(database => 'database', host => 'host', user => 'user', password => 'password');
+    $model->find_by_address('user@e.mail', 123);
+
+    my (@find_ids_call_args) = $dbh_mock->mocked_call_args('do', 1);
+
+    my @expected_values = ('user@e.mail');
+
+    my $find_ids_query = shift(@find_ids_call_args);
+    shift @find_ids_call_args;
+
+    ok(q{CREATE TEMPORARY TABLE int_ids_by_address select int_id from log where address=?;} eq $find_ids_query, 'Check correct query');
+
+    is_deeply(\@expected_values, \@find_ids_call_args, 'Check correct values');
+
+    my (@find_records_call_args) = $dbh_mock->mocked_call_args('selectall_arrayref');
+
+    my @expected_find_values = (123);
+
+    shift(@find_records_call_args);
+    shift @find_records_call_args;
+
+    is_deeply(\@expected_find_values, \@find_records_call_args, 'Check correct values');
+};
+
 done_testing();
 
 sub _buildDbhMock
 {
     my $dbh_mock = Test::MonkeyMock->new();
     $dbh_mock->mock(do => sub { 1 });
+    $dbh_mock->mock(selectall_arrayref => sub { [{created => '2012-02-13 14:49:16', str => '1Rb9ul-0008V2-SS == udbbwscdnbegrmloghuf@london.com R=dnslookup T=remote_smtp defer (-44): SMTP error from remote mail server after RCPT TO:<udbbwscdnbegrmloghuf@london.com>: host mx0.gmx.com [74.208.5.90]: 450 4.3.2 Too many mails (mail bomb), try again in 1 hour(s) 14 minute(s) and see ( http://portal.gmx.net/serverrules ) {mx-us017}'}] });
+    $dbh_mock->mock(selectrow_array => sub { 1 });
 
     return $dbh_mock;
 }
