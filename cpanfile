@@ -5,7 +5,10 @@ requires 'DBI';
 requires 'DBD::mysql';
 requires 'Carp';
 requires 'Email::Address';
+requires 'Email::Valid';
 requires 'Log::Mini';
+requires 'Mojolicious';
+requires 'Mojolicious::Plugin::INIConfig';
 
 on 'test' => sub {
     requires 'Test::More';

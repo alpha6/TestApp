@@ -2,6 +2,7 @@ package TestApp::Db;
 use strict;
 use warnings;
 
+require Carp;
 use DBI;
 use DBD::mysql;
 
@@ -65,6 +66,46 @@ sub save_log_record
     $self->{dbh}->do('INSERT INTO `log` (`created`, `int_id`, `str`, `address`) values (?,?,?,?)', undef, ($record->{created}, $record->{int_id}, $record->{str}, $record->{address}) );
 
     return 1;
+}
+
+sub find_by_address
+{
+    my $self = shift;
+    my ($address, $results_limit) = @_;
+
+    Carp::croak("Address is required") unless $address;
+
+    $results_limit ||= 100;
+
+    #     DROP TABLE IF EXISTS `int_ids_by_address`;
+    #     CREATE TEMPORARY TABLE int_ids_by_address select int_id from log where address='udbbwscdnbegrmloghuf@london.com';
+    #     select coalesce(l.created, m.created) as created, coalesce(l.int_id, m.int_id) as int_id, coalesce(l.str, m.str) as str from int_ids_by_address ia left join log l on ia.int_id = l.int_id left join message m on m.int_id = ia.int_id order by coalesce(l.created, m.created), coalesce(l.int_id, m.int_id) ASC limit 10;
+    #     select count(*) from int_ids_by_address ia left join log l on ia.int_id = l.int_id left join message m on m.int_id = ia.int_id;
+
+    $self->{dbh}->do(q{DROP TABLE IF EXISTS `int_ids_by_address`;});
+    $self->{dbh}->do(q{CREATE TEMPORARY TABLE int_ids_by_address select int_id from log where address=?;}, undef, $address);
+
+    my $select = <<'END';
+select
+   coalesce(l.created, m.created) as created,
+   coalesce(l.str, m.str) as str
+from int_ids_by_address ia
+   left join log l on ia.int_id = l.int_id
+   left join message m on m.int_id = ia.int_id
+order by
+   coalesce(l.int_id, m.int_id),
+   coalesce(l.created, m.created) DESC
+limit ?;
+END
+
+    my $rows = $self->{dbh}->selectall_arrayref( $select, { Slice => {} }, $results_limit);
+
+    my ($total) = $self->{dbh}->selectrow_array(q{select count(*) from int_ids_by_address ia left join log l on ia.int_id = l.int_id left join message m on m.int_id = ia.int_id;});
+
+    return {
+        rows          => $rows,
+        total_records => $total,
+    };
 }
 
 sub _buildDbh

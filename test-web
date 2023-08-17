@@ -1,21 +1,94 @@
 #!/usr/bin/env perl
+use lib 'lib';
 use Mojolicious::Lite -signatures;
+
+use Email::Valid;
+use TestApp::Db;
+
+my $config = plugin 'INIConfig'=> {file => 'config.ini'};
 
 get '/' => sub ($c) {
   $c->render(template => 'index');
 };
 
+post '/search' => sub ($c) {
+  my $address = $c->param('address');
+
+  unless ($address) {
+    $c->render(template => 'index', status => 400, error_message => 'Address is required');
+
+    return 0;
+  }
+
+  unless (Email::Valid->address($address)) {
+    $c->render(template => 'index', status => 400, error_message => 'Address is invalid');
+
+    return 0;
+  }
+
+  my $results_limit = $config->{web}{display_results} || 100;
+
+  my $model = TestApp::Db->new();
+  $model->connect(%{$config->{db}});
+
+  my $result = $model->find_by_address($address, $results_limit);
+
+  $c->render(template => 'index', search_results => {rows => $result->{rows}, total => $result->{total_records}, display_results => $results_limit});
+} ;
+
 app->start;
+
+
 __DATA__
 
 @@ index.html.ep
 % layout 'default';
-% title 'Welcome';
-<h1>Welcome to the Mojolicious real-time web framework!</h1>
+% title 'Address search';
+<h1>Log search</h1>
+<form method=POST action=/search>
+<p><input type=text name=address></p>
+<p><input type=submit value="Найти"></p>
+</form>
+
+% if (defined(stash("error_message")) && stash("error_message")) {
+% my $error_text = stash('error_message');
+    <h1>Request failed: <%= $error_text %>
+% }
+
+% if (defined(stash("search_results")) && stash("search_results")) {
+% my $result = stash("search_results");
+   <h1>Search results</h1>
+   <p>Total results: <%= $result->{total} %></p>
+   <p>On page: <%= $result->{display_results} %></p>
+  <table>
+    <thead><tr><th>Timestamp</th><th>Log string</th></tr></thead>
+    <tbody>
+% for my $row (@{$result->{rows}}) {
+    <tr><td class="ts"><%= $row->{created} %></td><td class="str"><%= $row->{str} %></td></tr>
+% }
+    </tbody>
+  </table>
+% }
 
 @@ layouts/default.html.ep
 <!DOCTYPE html>
 <html>
-  <head><title><%= title %></title></head>
+  <head>
+    <style>
+      table, th, td {
+        border: 1px solid black;
+        border-collapse: collapse;
+      }
+      th {
+        background-color: #BED5D5;
+      }
+      tr:nth-child(even) {
+        background-color: #D6EEEE;
+      }
+      tbody tr:hover { background-color: #8CE1E1; }
+      td.ts { width: 150px; }
+    </style>
+    <title><%= title %></title>
+  </head>
   <body><%= content %></body>
 </html>
