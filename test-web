@@ -59,7 +59,7 @@ __DATA__
 % my $result = stash("search_results");
    <h1>Search results</h1>
    <p>Total results: <%= $result->{total} %></p>
-   <p>On page: <%= $result->{display_results} %></p>
+   <p>On page limit: <%= $result->{display_results} %></p>
   <table>
     <thead><tr><th>Timestamp</th><th>Log string</th></tr></thead>
     <tbody>

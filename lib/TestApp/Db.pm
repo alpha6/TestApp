@@ -77,35 +77,27 @@ sub find_by_address
 
     $results_limit ||= 100;
 
-    #     DROP TABLE IF EXISTS `int_ids_by_address`;
-    #     CREATE TEMPORARY TABLE int_ids_by_address select int_id from log where address='udbbwscdnbegrmloghuf@london.com';
-    #     select coalesce(l.created, m.created) as created, coalesce(l.int_id, m.int_id) as int_id, coalesce(l.str, m.str) as str from int_ids_by_address ia left join log l on ia.int_id = l.int_id left join message m on m.int_id = ia.int_id order by coalesce(l.created, m.created), coalesce(l.int_id, m.int_id) ASC limit 10;
-    #     select count(*) from int_ids_by_address ia left join log l on ia.int_id = l.int_id left join message m on m.int_id = ia.int_id;
+# select SQL_CALC_FOUND_ROWS u.created, u.int_id, u.str from (select created, int_id, str from log as l union select created, int_id, str from message as m) as u, (select int_id from log where address = 'user@another.mail') as ia where u.int_id = ia.int_id;
+# SELECT FOUND_ROWS()
 
-    $self->{dbh}->do(q{DROP TABLE IF EXISTS `int_ids_by_address`;});
-    $self->{dbh}->do(q{CREATE TEMPORARY TABLE int_ids_by_address select int_id from log where address=?;}, undef, $address);
+    my $select = q{select SQL_CALC_FOUND_ROWS u.created as created, u.int_id as int_id, u.str as str from (select created, int_id, str from log as l union select created, int_id, str from message as m) as u, (select int_id from log where address = ?) as ia where u.int_id = ia.int_id limit ?};
+    my $found_rows_select = q{SELECT FOUND_ROWS()};
 
-    my $select = <<'END';
-select
-   coalesce(l.created, m.created) as created,
-   coalesce(l.str, m.str) as str
-from int_ids_by_address ia
-   left join log l on ia.int_id = l.int_id
-   left join message m on m.int_id = ia.int_id
-order by
-   coalesce(l.int_id, m.int_id),
-   coalesce(l.created, m.created) DESC
-limit ?;
-END
+    my $rows = $self->{dbh}->selectall_arrayref( $select, { Slice => {} }, $address, $results_limit);
 
-    my $rows = $self->{dbh}->selectall_arrayref( $select, { Slice => {} }, $results_limit);
-
-    my ($total) = $self->{dbh}->selectrow_array(q{select count(*) from int_ids_by_address ia left join log l on ia.int_id = l.int_id left join message m on m.int_id = ia.int_id;});
+    my ($total) = $self->{dbh}->selectrow_array($found_rows_select);
 
     return {
         rows          => $rows,
         total_records => $total,
     };
+}
+
+sub getDbh
+{
+    my $self = shift;
+
+    return $self->{dbh};
 }
 
 sub _buildDbh
