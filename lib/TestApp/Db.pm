@@ -77,13 +77,26 @@ sub find_by_address
 
     $results_limit ||= 100;
 
-# select SQL_CALC_FOUND_ROWS u.created, u.int_id, u.str from (select created, int_id, str from log as l union select created, int_id, str from message as m) as u, (select int_id from log where address = 'user@another.mail') as ia where u.int_id = ia.int_id;
-# SELECT FOUND_ROWS()
+    my $select = <<'EOF';
+select SQL_CALC_FOUND_ROWS created, int_id, str from (
+    (select l.created, l.int_id, l.str from
+        log as l,
+        (select int_id from log where address = ?) as ia
+    where l.int_id = ia.int_id )
+    union
+    (select m.created, m.int_id, m.str from
+        message as m,
+        (select int_id from log where address = ?) as ia
+    where m.int_id = ia.int_id)
+) as u
+order by created DESC, int_id
+limit ?;
 
-    my $select = q{select SQL_CALC_FOUND_ROWS u.created as created, u.int_id as int_id, u.str as str from (select created, int_id, str from log as l union select created, int_id, str from message as m) as u, (select int_id from log where address = ?) as ia where u.int_id = ia.int_id limit ?};
+EOF
+
     my $found_rows_select = q{SELECT FOUND_ROWS()};
 
-    my $rows = $self->{dbh}->selectall_arrayref( $select, { Slice => {} }, $address, $results_limit);
+    my $rows = $self->{dbh}->selectall_arrayref( $select, { Slice => {} }, $address, $address, $results_limit);
 
     my ($total) = $self->{dbh}->selectrow_array($found_rows_select);
 
@@ -96,6 +109,8 @@ sub find_by_address
 sub getDbh
 {
     my $self = shift;
+
+    Carp::croak('You have to connect first!') unless $self->{dbh};
 
     return $self->{dbh};
 }

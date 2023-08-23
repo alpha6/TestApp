@@ -63,8 +63,10 @@ __DATA__
   <table>
     <thead><tr><th>Timestamp</th><th>Log string</th></tr></thead>
     <tbody>
+    % my $i = 0;
 % for my $row (@{$result->{rows}}) {
-    <tr><td class="ts"><%= $row->{created} %></td><td class="str"><%= $row->{str} %></td></tr>
+% $i++ ;
+    <tr><td class="ts row_<%= $i %>"><%= $row->{created} %></td><td class="str"><%= $row->{str} %></td></tr>
 % }
     </tbody>
   </table>

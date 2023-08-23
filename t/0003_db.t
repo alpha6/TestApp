@@ -138,20 +138,10 @@ subtest 'call dbh with params on find_address' => sub {
     $model->connect(database => 'database', host => 'host', user => 'user', password => 'password');
     $model->find_by_address('user@e.mail', 123);
 
-    my (@find_ids_call_args) = $dbh_mock->mocked_call_args('do', 1);
-
-    my @expected_values = ('user@e.mail');
-
-    my $find_ids_query = shift(@find_ids_call_args);
-    shift @find_ids_call_args;
-
-    ok(q{CREATE TEMPORARY TABLE int_ids_by_address select int_id from log where address=?;} eq $find_ids_query, 'Check correct query');
-
-    is_deeply(\@expected_values, \@find_ids_call_args, 'Check correct values');
 
     my (@find_records_call_args) = $dbh_mock->mocked_call_args('selectall_arrayref');
 
-    my @expected_find_values = (123);
+    my @expected_find_values = ('user@e.mail', 'user@e.mail', 123);
 
     shift(@find_records_call_args);
     shift @find_records_call_args;
