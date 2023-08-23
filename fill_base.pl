@@ -67,7 +67,7 @@ sub _getRandomIntId
 
     my @chars = ("A".."Z", "a".."z", '0'..'9');
     my $int_id;
-    $int_id .= $chars[rand @chars] for 1..8;
+    $int_id .= $chars[rand @chars] for 1..10;
 
     return( $int_id, $id->{address});
 }
